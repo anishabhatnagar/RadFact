@@ -20,8 +20,12 @@ mamba:
 
 # Create the Conda environment
 env:
-	@echo Removing current Conda environment
-	conda env remove -n $(ENV_NAME)
+	@echo Removing current Conda environment if it exists
+	@if conda env list | grep -q "^$(ENV_NAME) "; then \
+		conda env remove -n $(ENV_NAME); \
+	else \
+		echo "Environment $(ENV_NAME) does not exist, skipping removal."; \
+	fi
 	@echo Re-building Conda environment from $(DEV_ENV_YAML)
 	conda env create -n $(ENV_NAME) -f $(DEV_ENV_YAML)
 	@echo Add all local packages in editable mode
