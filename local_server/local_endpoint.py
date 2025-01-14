@@ -1,10 +1,27 @@
 from flask import Flask, request, jsonify
+
 import torch
-import json
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Initialize the Flask app
+import logging
+
+from datetime import datetime
+
 app = Flask(__name__)
+
+# Set up the logger
+current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_file_path = f"/gpfs/scratch/ab10945/Imp_Generation/RadFact/local_server/endpoint_logs/endpoint_{current_time}.log"
+
+logging.basicConfig(
+    level=logging.INFO,  # Log all INFO and above messages
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path),  # Save logs to a file
+        logging.StreamHandler()              # Print logs to the console
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Specify the path to your local LLM
 MODEL_PATH = "/gpfs/scratch/ab10945/Imp_Generation/Meta-Llama-3.1-8B-Instruct"  # Replace with the path to your local model
@@ -17,36 +34,66 @@ model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, device_map='auto')
 
 @app.route('/completions', methods=['POST'])
 def completions():
-    """
-    Handle inference requests.
-    Expects a JSON payload with 'input' key for input text.
-    """
     try:
-        # Handle raw JSON input without requiring a specific key
+        # Log the incoming request
+        logger.info("Received request: %s", request.get_json())
+
         data = request.get_json()
-        if isinstance(data, dict):
-            # If input is a dictionary, extract it (fallback to the `input` key if exists)
-            input_text = data.get('input', '') or json.dumps(data)
-        elif isinstance(data, str):
-            # If input is a raw string, use it as is
-            input_text = data
-        else:
-            return jsonify({'error': 'Invalid input format.'}), 400
 
-        # Ensure input_text is valid
-        if not input_text.strip():
-            return jsonify({'error': 'Input text must be a non-empty string.'}), 400
+        # Extract and validate the input
+        # model = data.get("model", None)
+        prompt = data.get("prompt", None)
+        max_tokens = data.get("max_tokens", 1024)
+        temperature = data.get("temperature", 0.0)
+        do_sample=temperature > 0.0
+        top_p = data.get("top_p", 1.0)
+        frequency_penalty = data.get("frequency_penalty", 0.0)
+        presence_penalty = data.get("presence_penalty", 0.0)
+        stop = data.get("stop", None)
+        num_return_sequences = data.get("n", 1)
+        eos_token_id=tokenizer.eos_token_id if stop is None else tokenizer.convert_tokens_to_ids(stop)
 
-        # Process the input_text
-        # Replace this with the actual logic for the model
-        response_text = f"Processed input: {input_text}"
+        if not model or not prompt:
+            logger.warning("Missing 'model' or 'prompt' in the request: %s", data)
+            return jsonify({'error': "'model' and 'prompt' are required fields."}), 400
 
-        return jsonify({'response': response_text})
+        # Log the extracted model and prompt
+        # logger.info("Model: %s", model)
+        # logger.info("Prompt: %s", prompt)
+
+        # Example processing of the prompt (you can replace this with your model logic)
+        # Simulate the response for testing
+        responses = []
+
+
+        for single_prompt in prompt:
+            input = tokenizer(single_prompt, return_tensors='pt', truncation=True).to(device)
+
+            output_ids = model.generate(
+                input["input_ids"],
+                max_length=max_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                num_return_sequences=num_return_sequences,
+                do_sample=do_sample,  # Enable sampling if temperature > 0
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                eos_token_id=eos_token_id
+            )
+
+            output = output_ids[0][input.shape[-1]:]
+            impression = tokenizer.decode(output, skip_special_tokens=True)
+            responses.append(impression)
+
+        # Log the generated response
+        logger.info("Generated response: %s", responses)
+
+        # Return the response
+        return jsonify({"responses": responses})
 
     except Exception as e:
-        # Handle any errors during processing
-        return jsonify({"error": str(e)}), 500
+        logger.exception("An error occurred while processing the request")
+        return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    # Run the Flask app on all available network interfaces (default port: 5000)
     app.run(host='0.0.0.0', port=5000)
