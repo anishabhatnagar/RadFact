@@ -10,6 +10,7 @@ from typing import Any
 
 from azureml._restclient.models.error_response import ErrorResponseException
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_core.language_models.base import BaseLanguageModel
 
 from radfact.llm_utils.endpoint import Endpoint, EndpointType
 
@@ -63,11 +64,17 @@ class OpenaiAPIArguments(metaclass=ABCMeta):
                     max_retries=self.max_retries,
                     request_timeout=self.timeout,
                 )
+            case EndpointType.LOCAL_MODEL:
+                return dict(
+                    base_url=self.endpoint.url,
+                    max_retries=self.max_retries,
+                    request_timeout=self.timeout,
+                )
             case _:
                 raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
 
     @abstractmethod
-    def get_model(self) -> ChatOpenAI | AzureChatOpenAI:
+    def get_model(self) -> BaseLanguageModel: #ChatOpenAI | AzureChatOpenAI:
         """Returns the chat model."""
         raise NotImplementedError(f"get_model() must be implemented in a subclass {self.__class__.__name__}")
 
@@ -105,13 +112,16 @@ class LLMAPIArguments(OpenaiAPIArguments):
         params.update(self.get_chat_completion_params())
         return params
 
-    def get_model(self) -> ChatOpenAI | AzureChatOpenAI:
+    def get_model(self) -> BaseLanguageModel: #ChatOpenAI | AzureChatOpenAI:
         assert self.endpoint is not None  # for mypy
         match self.endpoint.type:
             case EndpointType.AZURE_CHAT_OPENAI:
                 return AzureChatOpenAI(**self.get_params())
             case EndpointType.CHAT_OPENAI:
                 return ChatOpenAI(**self.get_params())
+            case EndpointType.LOCAL_MODEL:
+                from langchain_community.llms import OpenAI
+                return OpenAI(**self.get_params())
             case _:
                 raise ValueError(f"Unsupported endpoint type {self.endpoint.type}")
 

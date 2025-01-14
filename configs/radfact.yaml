@@ -2,5 +2,5 @@
 
 defaults:
   - default
-  - override endpoints: chat_openai
+  - override endpoints: local_model
   - _self_

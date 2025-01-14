@@ -1,0 +1,15 @@
+ENDPOINT_0:
+  type: "LOCAL_MODEL"               # Local endpoint mimics CHAT_OPENAI API behavior
+  url: "http://127.0.0.1:5000"  # Local endpoint URL
+  deployment_name: "local-llm"      # Name for your local deployment
+
+  # Authentication is not required for the local model.
+  # Setting api_key_env_var_name to null or leaving it out entirely will bypass any authentication checks.
+  api_key_env_var_name: "OPENAI_API_KEY"
+
+  # Speed factor to balance data distribution if multiple endpoints are used. Default to 1.0 for single endpoint setups.
+  speed_factor: 1.0
+
+  # Number of parallel processes to allow for concurrent requests to this endpoint.
+  # Increase this value based on your GPU capacity and Flask server throughput.
+  num_parallel_processes: 1

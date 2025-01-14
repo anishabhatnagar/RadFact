@@ -2,7 +2,7 @@
 
 defaults:
   - default
-  - override endpoints: azure_chat_openai
+  - override endpoints: local_model
   - _self_
 
 dataset:
