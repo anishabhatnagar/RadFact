@@ -17,6 +17,7 @@ ENV_API_KEY = "API_KEY"
 class EndpointType(Enum):
     AZURE_CHAT_OPENAI = "azure_chat_openai"
     CHAT_OPENAI = "chat_openai"
+    LOCAL_MODEL = "local_model"
 
 
 @dataclass(frozen=False)
@@ -36,6 +37,8 @@ class Endpoint:
 
     @property
     def api_key(self) -> str:
+        if self.type == EndpointType.LOCAL_MODEL:
+            return ""  # No API key required for local models
         if self._api_key is None:
             self._api_key = get_from_env_or_vault(
                 env_var_name=self.api_key_env_var_name,
@@ -47,6 +50,8 @@ class Endpoint:
 
     @property
     def token_provider(self) -> Callable[[], str]:
+        if self.type == EndpointType.LOCAL_MODEL:
+            return lambda: ""  # No token required for local models
         if self._token_provider is None:
             self._token_provider = get_azure_token_provider()
         assert self._token_provider is not None  # for mypy
