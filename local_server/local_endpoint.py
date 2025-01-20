@@ -36,7 +36,8 @@ model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, device_map='auto')
 def completions():
     try:
         # Log the incoming request
-        logger.info("Received request: %s", request.get_json())
+        # logger.info("Received request: %s", request.get_json())
+        logger.info(f"Model device: {next(model.parameters()).device}")
 
         data = request.get_json()
 
@@ -68,20 +69,21 @@ def completions():
 
         for single_prompt in prompt:
             input = tokenizer(single_prompt, return_tensors='pt', truncation=True).to(device)
+            logger.info(f"Input tensor device: {input['input_ids'].device}")
 
             output_ids = model.generate(
                 input["input_ids"],
-                max_length=max_tokens,
+                max_new_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,
                 num_return_sequences=num_return_sequences,
                 do_sample=do_sample,  # Enable sampling if temperature > 0
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty,
+                # frequency_penalty=frequency_penalty,
+                # presence_penalty=presence_penalty,
                 eos_token_id=eos_token_id
             )
 
-            output = output_ids[0][input.shape[-1]:]
+            output = output_ids[0][input["input_ids"].shape[-1]:]
             impression = tokenizer.decode(output, skip_special_tokens=True)
             responses.append(impression)
 
