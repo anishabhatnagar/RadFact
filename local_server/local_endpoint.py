@@ -12,7 +12,6 @@ app = Flask(__name__)
 # Set up the logger
 current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 log_file_path = f"/gpfs/scratch/ab10945/Imp_Generation/RadFact/local_server/endpoint_logs/endpoint_{current_time}.log"
-
 logging.basicConfig(
     level=logging.INFO,  # Log all INFO and above messages
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -30,7 +29,7 @@ MODEL_PATH = "/gpfs/scratch/ab10945/Imp_Generation/Meta-Llama-3.1-8B-Instruct"  
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Load the model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, device_map='auto')
+model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.float16, device_map='auto')
 
 @app.route('/completions', methods=['POST'])
 def completions():
@@ -73,6 +72,7 @@ def completions():
 
             output_ids = model.generate(
                 input["input_ids"],
+                attention_mask=input["attention_mask"],
                 max_new_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,
@@ -80,7 +80,8 @@ def completions():
                 do_sample=do_sample,  # Enable sampling if temperature > 0
                 # frequency_penalty=frequency_penalty,
                 # presence_penalty=presence_penalty,
-                eos_token_id=eos_token_id
+                eos_token_id=eos_token_id,
+                pad_token_id=tokenizer.eos_token_id
             )
 
             output = output_ids[0][input["input_ids"].shape[-1]:]
