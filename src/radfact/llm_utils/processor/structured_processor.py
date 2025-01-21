@@ -209,7 +209,7 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
         assert self.model, "Model not set. Call `set_model` first."
         chain = self.query_template | self.model | self.parser
         try:
-            logger.info(f'\n\n ==== Using the prompt: === \n {self.query_template} \n\n {query}')
+            # logger.info(f'\n\n ==== Using the prompt: === \n {self.query_template} \n\n {query}')
             response: ResultT = chain.invoke({_QUERY_KEY: query})
             if self.validate_result_fn:
                 self.validate_result_fn(query, response)
