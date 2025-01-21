@@ -115,6 +115,7 @@ class ReportGroundingNLIProcessor(BaseProcessor[NLIQuerySample, NLISample]):
         """
         single_response = self.phrase_processor.run(query=single_phrase.input, query_id=query_id)
 
+        logger.info(f'single_response for {query_id}, {single_phrase.input.hypothesis} = {single_response}')
         if single_response is None:
             logger.warning(f"WARNING: No response for example {query_id}. Setting as NOT ENTAILED.")
             single_response = EvidencedPhrase(

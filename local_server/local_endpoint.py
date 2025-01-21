@@ -1,10 +1,13 @@
 from flask import Flask, request, jsonify
-
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from pydantic import ValidationError
+
+from radfact.llm_utils.nli.schema import ComparisonQuerySinglePhrase, EvidencedPhrase
+from langchain.output_parsers import PydanticOutputParser
+import yaml
 
 import logging
-
 from datetime import datetime
 
 app = Flask(__name__)
@@ -31,6 +34,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForCausalLM.from_pretrained(MODEL_PATH, torch_dtype=torch.float16, device_map='auto')
 
+# Pydantic schema for input and output
+input_parser = PydanticOutputParser(pydantic_object=ComparisonQuerySinglePhrase)
+output_parser = PydanticOutputParser(pydantic_object=EvidencedPhrase)
+
 @app.route('/completions', methods=['POST'])
 def completions():
     try:
@@ -40,6 +47,14 @@ def completions():
 
         data = request.get_json()
 
+        # Parse and validate input
+        try:
+            query = input_parser.parse(data)
+        except ValidationError as e:
+            logger.error("Validation error: %s", e)
+            return jsonify({'error': 'Invalid input format', 'details': e.errors()}), 400
+
+        logger.info("QUERY: %s", query)
         # Extract and validate the input
         # model = data.get("model", None)
         prompt = data.get("prompt", None)
@@ -63,7 +78,7 @@ def completions():
 
         # Example processing of the prompt (you can replace this with your model logic)
         # Simulate the response for testing
-        responses = []
+        # responses = []
 
 
         for single_prompt in prompt:
@@ -84,15 +99,30 @@ def completions():
                 pad_token_id=tokenizer.eos_token_id
             )
 
-            output = output_ids[0][input["input_ids"].shape[-1]:]
-            impression = tokenizer.decode(output, skip_special_tokens=True)
-            responses.append(impression)
+            # output = output_ids[0]#[input["input_ids"].shape[-1]:]
+            raw_output = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+            # responses.append(impression)
+
+        # Parse model output into EvidencedPhrase
+        try:
+            response = output_parser.parse(raw_output)
+        except ValidationError as e:
+            logger.error("Output validation error: %s", e)
+            # response = EvidencedPhrase(
+            #     phrase=query.hypothesis, status=EVState.NOT_ENTAILMENT, evidence=[]
+            # )
+
+        # Format the response as YAML
+        formatted_output = yaml.dump(response.dict(), sort_keys=False)
 
         # Log the generated response
-        logger.info("Generated response: %s", responses)
+        logger.info("Generated and formatted response: %s", formatted_output)
+
+        # Return the formatted YAML response
+        return formatted_output, 200, {'Content-Type': 'text/yaml'}
 
         # Return the response
-        return jsonify({"responses": responses})
+        # return jsonify({"responses": responses})
 
     except Exception as e:
         logger.exception("An error occurred while processing the request")
