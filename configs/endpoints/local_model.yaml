@@ -1,7 +1,7 @@
 ENDPOINT_0:
   type: "CHAT_OPENAI"               # Local endpoint mimics CHAT_OPENAI API behavior
   url: "http://127.0.0.1:5000"  # Local endpoint URL
-  deployment_name: "local-llm"      # Name for your local deployment
+  deployment_name: "llama-3.1-8b"      # Name for your local deployment
 
   # Authentication is not required for the local model.
   # Setting api_key_env_var_name to null or leaving it out entirely will bypass any authentication checks.

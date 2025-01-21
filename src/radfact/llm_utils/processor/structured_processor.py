@@ -207,15 +207,20 @@ class StructuredProcessor(BaseProcessor[QueryT, ResultT]):
 
     def run(self, query: QueryT, query_id: str) -> ResultT | None:
         assert self.model, "Model not set. Call `set_model` first."
-        chain = self.query_template | self.model | self.parser
+        chain = self.query_template | self.model | self.parser #StrOutputParser() #
         try:
-            # logger.info(f'\n\n ==== Using the prompt: === \n {self.query_template} \n\n {query}')
+            # logger.info(f'\n\n ==== Using the prompt: === \n {_QUERY_KEY: query}')
+            logger.info(f'\n\n ==== Invoking API call: === ')
             response: ResultT = chain.invoke({_QUERY_KEY: query})
+            # response = chain.invoke({_QUERY_KEY: query})
+            logger.info(f'\n\n ==== response: === \n {response}')
             if self.validate_result_fn:
+                logger.info(f'\n\n ==== checking validate result function: === \n {response}')
                 self.validate_result_fn(query, response)
             self.num_success += 1
             return response
         except Exception as ex:
+            logger.info(f'Validation failed, hence, setting response as NONE')
             self._write_error(ex, query, query_id)
             self.num_failures += 1
             return None

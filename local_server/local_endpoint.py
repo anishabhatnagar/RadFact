@@ -7,6 +7,7 @@ from langchain.output_parsers import PydanticOutputParser
 
 import logging
 from datetime import datetime
+import time
 
 app = Flask(__name__)
 
@@ -64,14 +65,6 @@ def completions():
             logger.warning("Missing 'model' or 'messages' in the request: %s", data)
             return jsonify({'error': "'model' and 'messages' are required fields."}), 400
 
-        # Log the extracted model and prompt
-        # logger.info("Model: %s", model)
-        # logger.info("messages: %s", messages)
-
-        # Example processing of the prompt (you can replace this with your model logic)
-        # Simulate the response for testing
-        # responses = []
-
         inputs = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors='pt').to(device)
         # inputs = tokenizer(prompt, return_tensors='pt', truncation=True).to(device)
         logger.info(f"Input tensor device: {inputs.device}")
@@ -83,34 +76,37 @@ def completions():
             top_p=top_p,
             num_return_sequences=num_return_sequences,
             do_sample=do_sample,  # Enable sampling if temperature > 0
-            # frequency_penalty=frequency_penalty,
-            # presence_penalty=presence_penalty,
-            # eos_token_id=eos_token_id,
             pad_token_id=tokenizer.eos_token_id
         )
 
-        # output = output_ids[0]#[input["input_ids"].shape[-1]:]
-        raw_output = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        # logger.info(f"Raw output = {raw_output}")
-        # responses.append(impression)
+        output = output_ids[0][inputs.shape[1]:]
+        raw_output = tokenizer.decode(output, skip_special_tokens=True)
 
-        # Parse model output into EvidencedPhrase
-        # try:
-        #     response = output_parser.parse(raw_output)
-        # except ValidationError as e:
-        #     logger.error("Output validation error: %s", e)
-            # response = EvidencedPhrase(
-            #     phrase=query.hypothesis, status=EVState.NOT_ENTAILMENT, evidence=[]
-            # )
+        # Return the formatted response
+        logger.info(f"================ returning the result ================ \n\n{raw_output}")
 
-        # Format the response as YAML
-        # formatted_output = yaml.dump(response.dict(), sort_keys=False)
+        response = {
+            "id": f"chatcmpl-{time.time()}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": "your-custom-model-name",
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": raw_output
+                },
+                "finish_reason": "stop"
+            }],
+            "usage": {
+                "prompt_tokens": len(inputs[0]),
+                "completion_tokens": len(output_ids[0]),
+                "total_tokens": len(inputs[0]) + len(output_ids[0])
+            }
+        }
 
-        # Log the generated response
-        # logger.info("Generated and formatted response: %s", formatted_output)
-
-        # Return the formatted YAML response
-        return raw_output, 200, {'Content-Type': 'text/yaml'} #formatted_output
+        return jsonify(response), 200
+        # return raw_output, 200, {'Content-Type': 'text/plain'} #formatted_output
 
         # Return the response
         # return jsonify({"responses": responses})
