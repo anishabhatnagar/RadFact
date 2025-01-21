@@ -116,10 +116,13 @@ class LLMAPIArguments(OpenaiAPIArguments):
         assert self.endpoint is not None  # for mypy
         match self.endpoint.type:
             case EndpointType.AZURE_CHAT_OPENAI:
+                logger.info("============= setting model using AZURE_CHAT_OPENAI ============= ")
                 return AzureChatOpenAI(**self.get_params())
             case EndpointType.CHAT_OPENAI:
+                logger.info("============= setting model using CHAT_OPENAI ============= ")
                 return ChatOpenAI(**self.get_params())
             case EndpointType.LOCAL_MODEL:
+                logger.info("============= setting model using LOCAL_MODEL ============= ")
                 from langchain_community.llms import OpenAI
                 return OpenAI(**self.get_params())
             case _:

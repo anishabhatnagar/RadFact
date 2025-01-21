@@ -1,5 +1,5 @@
 ENDPOINT_0:
-  type: "LOCAL_MODEL"               # Local endpoint mimics CHAT_OPENAI API behavior
+  type: "CHAT_OPENAI"               # Local endpoint mimics CHAT_OPENAI API behavior
   url: "http://127.0.0.1:5000"  # Local endpoint URL
   deployment_name: "local-llm"      # Name for your local deployment
 
